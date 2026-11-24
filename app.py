@@ -485,6 +485,13 @@ def missing_db(error):
 
 app.register_blueprint(admin)
 
+try:
+    from workers import wsgi
+except ImportError:
+    pass
+else:
+    Default = wsgi.entrypoint(app)
+
 
 if __name__ == "__main__":
     print("Košarica teče na http://127.0.0.1:5050")
