@@ -13,3 +13,11 @@ dev = [
     "workers-py",
     "workers-runtime-sdk",
 ]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
+py-modules = ["app", "store", "seed", "runtime_files", "build_bundle"]
