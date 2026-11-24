@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/basket_card.html" import basket_card %}
+{% block content %}
+<section class="hero wrap">
+  <div>
+    <p class="eyebrow">Sezonsko · vsak teden · brez trgovine vmes</p>
+    <h1>Od kmeta do tvojih vrat.</h1>
+    <p class="lead">Naročnina na svežo zelenjavo. Izbereš velikost košarice, zamenjaš, kar doma ne gre, in poveš, kam ti jo pripeljemo.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('kosarice') }}">Izberi košarico</a>
+      <a class="btn btn-ghost" href="{{ url_for('kako') }}">Kako deluje</a>
+    </div>
+    <ul class="trust">
+      <li>3 velikosti</li>
+      <li>Menjava sestavin</li>
+      <li>Dostava po Sloveniji</li>
+    </ul>
+  </div>
+  <aside class="ticket">
+    <div class="ticket-top">
+      <p>Ta teden v srednji košarici</p>
+      <span>{{ meta.season }}</span>
+    </div>
+    <ul class="ticket-list">
+      {% for item in featured["items"] %}
+        <li>
+          {{ icon(group_icon[item.group]) }}
+          <span>{{ item.name }}</span>
+          <em>{{ item.qty_label }}</em>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="ticket-foot">
+      <div>
+        <strong>{{ featured.price }} € / mesec</strong>
+        <small>{{ featured.weekly }} € na košarico</small>
+      </div>
+      <a href="{{ url_for('kosarica', size='srednja') }}">Sestavi</a>
+    </div>
+  </aside>
+</section>
+
+<section class="wrap section">
+  <div class="section-head">
+    <p class="eyebrow">Tri velikosti, ena njiva</p>
+    <h2>Koliko vas jé, toliko pride v zaboj.</h2>
+  </div>
+  <div class="basket-grid">
+    {% for basket in baskets %}
+      {{ basket_card(basket) }}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <div class="section-head light">
+      <p class="eyebrow">Od grede do praga</p>
+      <h2>Štirje koraki, potem samo odpreš vrata.</h2>
+    </div>
+    <ol class="steps">
+      <li><span>01</span><h3>Izberi velikost</h3><p>Mala, srednja ali velika. Glede na to, koliko ljudi kuha iz istega hladilnika.</p></li>
+      <li><span>02</span><h3>Zamenjaj nekaj</h3><p>Do 2, 3 ali 4 sestavine. Ostalo prepusti sezoni, da kmet ne ostane z njivo, ki je nihče noče.</p></li>
+      <li><span>03</span><h3>Povej lokacijo</h3><p>Ulica, kraj in dan: torek, sreda ali četrtek. Dopiši, kje zaboj počaka, če te ni doma.</p></li>
+      <li><span>04</span><h3>Enkrat na mesec</h3><p>Štiri košarice, en račun. Dostava je v ceni. Lesen zaboj naslednji teden vzamemo nazaj.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="section-head">
+    <p class="eyebrow">{{ meta.season }}</p>
+    <h2>Ta teden raste to.</h2>
+    <p class="lead">{{ meta.season_note }}</p>
+  </div>
+  <div class="season-grid">
+    {% for group in groups %}
+      <article>
+        <h3>{{ icon(group.icon) }} {{ group.name }}</h3>
+        <ul>
+          {% for item in group["items"] %}
+            <li>{{ item.name }}</li>
+          {% endfor %}
+        </ul>
+      </article>
+    {% endfor %}
+  </div>
+  <p class="field-note">{{ meta.field_note }}</p>
+</section>
+
+<section class="wrap swap-story">
+  <div>
+    <p class="eyebrow">Sezona odloča, ti popraviš</p>
+    <h2>Zamenjaš samo tisto, česar res ne boš skuhal.</h2>
+    <p>V mali košarici sta na voljo 2 menjavi, v srednji 3, v veliki 4. Menjava velja za košarice, ki jih še nismo začeli pakirati.</p>
+    <a class="btn btn-dark" href="{{ url_for('kosarice') }}">Poglej, kaj lahko zamenjaš</a>
+  </div>
+  <div class="swap-pair">
+    <p>Primer iz Ljubljane</p>
+    <div><span class="out">Rdeča pesa</span><span>postane</span><span class="in">Motovilec</span></div>
+    <small>Ana pese ne peče. Motovilec gre v solato isti večer.</small>
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="section-head">
+    <p class="eyebrow">Tri kmetije, en zaboj</p>
+    <h2>Zelenjava ne prepotuje več, kot je treba.</h2>
+  </div>
+  <div class="farm-grid">
+    {% for farm in farms %}
+      <article class="farm">
+        <p class="eyebrow">{{ farm.place }} · {{ farm.soil }}</p>
+        <h3>{{ farm.name }}</h3>
+        <p>{{ farm.text }}</p>
+        <p class="grows">{{ farm.grows }}</p>
+      </article>
+    {% endfor %}
+  </div>
+  <p class="center-link"><a href="{{ url_for('kmetije') }}">Več o kmetijah</a></p>
+</section>
+
+<section class="band band-quiet">
+  <div class="wrap quote-grid">
+    {% for quote in quotes %}
+      <figure>
+        <blockquote>»{{ quote.quote }}«</blockquote>
+        <figcaption>{{ quote.name }}, {{ quote.place }} · {{ quote.detail }}</figcaption>
+      </figure>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="section-head">
+    <p class="eyebrow">Preden se odločiš</p>
+    <h2>Kratki odgovori.</h2>
+  </div>
+  <div class="faq">
+    {% for item in faqs %}
+      <details>
+        <summary>{{ item.q }}</summary>
+        <p>{{ item.a }}</p>
+      </details>
+    {% endfor %}
+  </div>
+  <p class="center-link"><a href="{{ url_for('kako') }}">Vsa vprašanja</a></p>
+</section>
+
+<section class="closing wrap">
+  <div>
+    <h2>Naslednja košarica gre na pot ta teden.</h2>
+    <p>Če izbereš dan, ki je še pred nami, jo lahko dobiš že tokrat. Sicer začnemo naslednji teden.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('kosarice') }}">Začni naročnino</a>
+</section>
+{% endblock %}

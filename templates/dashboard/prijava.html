@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Vstop v pregled · Košarica{% endblock %}
+{% block body_class %}is-dashboard{% endblock %}
+{% block body %}
+<main class="gate">
+  {% include "partials/flash.html" %}
+  <form class="gate-card" method="post">
+    <svg class="logo-mark big" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-basket"></use></svg>
+    <p class="eyebrow">Samo za ekipo</p>
+    <h1>Pregled kmetije</h1>
+    <p>Naročila, stranke in tedenske dostave.</p>
+    <label>Uporabniško ime
+      <input name="uporabnik" autocomplete="username" required value="uurbanija">
+    </label>
+    <label>Geslo
+      <input type="password" name="geslo" autocomplete="current-password" required>
+    </label>
+    <button class="btn btn-primary btn-full" type="submit">Vstopi</button>
+    <p class="help">Za ta predogled: uporabnik <strong>uurbanija</strong>, geslo <strong>123</strong>.</p>
+    <a href="{{ url_for('index') }}">Nazaj v trgovino</a>
+  </form>
+</main>
+{% endblock %}

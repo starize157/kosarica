@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Moj račun · Košarica{% endblock %}
+{% block content %}
+<header class="page-head wrap">
+  <p class="eyebrow">Račun</p>
+  <h1>Živjo, {{ snap.user.firstName }}.</h1>
+</header>
+{% if not snap.subscription %}
+  <section class="wrap empty-state">
+    <h2>Košarice še nimaš.</h2>
+    <p>Izberi velikost, zamenjaj kakšno sestavino in povej, kam jo pripeljemo.</p>
+    <a class="btn btn-primary" href="{{ url_for('kosarice') }}">Izberi košarico</a>
+  </section>
+{% else %}
+  {% set sub = snap.subscription %}
+  <section class="wrap account">
+    <aside class="summary-card">
+      <p class="eyebrow">{{ sub.statusName }}</p>
+      <h2>{{ sub.sizeName }} košarica</h2>
+      <p class="price"><strong>{{ sub.price }} €</strong> <span>/ mesec</span></p>
+      <ul class="meta-list">
+        <li>Dostava: {{ sub.dayName|cap }}</li>
+        <li>{{ sub.weekly }} € na košarico</li>
+        <li>Od {{ sub.startedAt|sidate }}</li>
+      </ul>
+      {% if sub.swapLines %}
+        <h3>Stalne menjave</h3>
+        <ul class="plain">
+          {% for line in sub.swapLines %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+      {% else %}
+        <p>Sestava je sezonska, brez menjav.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('racun_pavza') }}">
+        <button class="btn btn-ghost btn-full" type="submit">
+          {% if sub.status == 'pavzirana' %}Nadaljuj naročnino{% else %}Pavziraj naročnino{% endif %}
+        </button>
+      </form>
+      <a href="{{ url_for('kosarice') }}">Zamenjaj velikost</a>
+    </aside>
+    <div class="account-main">
+      {% if sub.status == 'pavzirana' %}
+        <p class="banner">Naročnina je pavzirana. Novih košaric ne pakiramo, dokler je ne nadaljuješ.</p>
+      {% endif %}
+      <section class="panel">
+        <h2>Naslednje košarice</h2>
+        {% if snap.upcoming %}
+          <ul class="delivery-list">
+            {% for order in snap.upcoming %}
+              <li>
+                <div>
+                  <strong>{{ order.deliveryDate|sidate }}</strong>
+                  <span class="status st-{{ order.status }}">{{ order.statusName }}</span>
+                </div>
+                <p>{{ order.dayName|cap }} · {{ order.id }}</p>
+                <ul>
+                  {% for item in order["items"] %}
+                    <li>{{ item.name }}{% if item.swapped %} <em>(namesto {{ item.insteadOf }})</em>{% endif %}</li>
+                  {% endfor %}
+                </ul>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>Ni načrtovanih dostav.</p>
+        {% endif %}
+      </section>
+      <section class="panel">
+        <h2>Menjave</h2>
+        <p class="help">Shranijo se na košarice, ki še niso v pakiranju.</p>
+        {% set basket = swap_form.basket %}
+        {% set options = swap_form.options %}
+        {% set selected = swap_form.selected %}
+        {% set names = swap_form.names %}
+        {% set action = url_for('racun_menjave') %}
+        {% set button = "Shrani menjave" %}
+        {% include "partials/swap_form.html" %}
+      </section>
+      <section class="panel">
+        <h2>Dan dostave</h2>
+        <form method="post" action="{{ url_for('racun_dan') }}">
+          <div class="days">
+            {% for key, label in day_label.items() %}
+              <label class="day">
+                <input type="radio" name="dan" value="{{ key }}" {% if sub.deliveryDay == key %}checked{% endif %}>
+                <span>{{ label|cap }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <button class="btn btn-dark" type="submit">Shrani dan</button>
+        </form>
+        <p class="help">Dan velja za košarice, ki še niso v pakiranju.</p>
+      </section>
+      <section class="panel">
+        <h2>Naslov</h2>
+        <form method="post" action="{{ url_for('racun_naslov') }}">
+          <label>Ulica in hišna številka
+            <input name="ulica" required value="{{ values.ulica }}">
+          </label>
+          <div class="form-grid">
+            <label>Pošta<input name="posta" required maxlength="4" value="{{ values.posta }}"></label>
+            <label>Kraj<input name="mesto" required value="{{ values.mesto }}"></label>
+          </div>
+          <label>Telefon<input name="telefon" value="{{ values.telefon }}"></label>
+          <label>Opombe<textarea name="opombe" rows="3">{{ values.opombe }}</textarea></label>
+          <button class="btn btn-dark" type="submit">Shrani naslov</button>
+        </form>
+      </section>
+      <section class="panel">
+        <h2>Pretekle dostave</h2>
+        {% if snap.history %}
+          <ul class="history">
+            {% for order in snap.history %}
+              <li><span>{{ order.deliveryDate|sidate }}</span><span>{{ order.id }}</span><span class="status st-dostavljeno">Dostavljeno</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>Ko bo prva košarica dostavljena, se bo pokazala tukaj.</p>
+        {% endif %}
+      </section>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

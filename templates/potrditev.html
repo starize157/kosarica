@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Naročnina je odprta · Košarica{% endblock %}
+{% block content %}
+<section class="wrap confirm">
+  <p class="eyebrow">Zapisano</p>
+  <h1>Prva košarica ima naslov.</h1>
+  <p class="lead">{{ subscription.sizeName }} košarica, dostava {{ order.dayName }}, {{ order.deliveryDate|sidate }}. Številka dostave je {{ order.id }}.</p>
+  <div class="panel confirm-grid">
+    <div>
+      <h2>Kam</h2>
+      <p>{{ order.address.street }}<br>{{ order.address.postal }} {{ order.address.city }}</p>
+      {% if order.address.notes %}<p>{{ order.address.notes }}</p>{% endif %}
+    </div>
+    <div>
+      <h2>V zaboju</h2>
+      <ul class="ingredient-list">
+        {% for item in order["items"] %}
+          <li>
+            <span>{{ item.name }}{% if item.swapped %} <em class="badge">namesto {{ item.insteadOf }}</em>{% endif %}</span>
+            <em>{{ item.qty }}</em>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <p>Mesečni znesek je {{ subscription.price|eur }}. V tej različici plačila ne izvedemo, naročilo pa je vidno na pregledu kmetije.</p>
+  <a class="btn btn-primary" href="{{ url_for('racun') }}">Odpri moj račun</a>
+</section>
+{% endblock %}

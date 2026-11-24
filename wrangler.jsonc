@@ -3,5 +3,8 @@
   "name": "kosarica",
   "main": "app.py",
   "compatibility_date": "2026-11-24",
-  "compatibility_flags": ["python_workers"]
+  "compatibility_flags": ["python_workers"],
+  "observability": {
+    "enabled": true
+  }
 }

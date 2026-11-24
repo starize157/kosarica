@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Prijava · Košarica{% endblock %}
+{% block content %}
+<section class="auth wrap">
+  <form class="auth-card" method="post">
+    <p class="eyebrow">Račun</p>
+    <h1>Prijava</h1>
+    <p>Za ogled obstoječe naročnine: <strong>ana.horvat@example.com</strong>, geslo <strong>kosarica</strong>.</p>
+    <input type="hidden" name="naprej" value="{{ naprej }}">
+    <label>E-pošta
+      <input type="email" name="email" autocomplete="username" required value="ana.horvat@example.com">
+    </label>
+    <label>Geslo
+      <input type="password" name="geslo" autocomplete="current-password" required>
+    </label>
+    <button class="btn btn-primary btn-full" type="submit">Vstopi</button>
+    <p class="auth-switch">Še nimaš računa? <a href="{{ url_for('registracija', naprej=naprej) }}">Registracija</a></p>
+  </form>
+</section>
+{% endblock %}

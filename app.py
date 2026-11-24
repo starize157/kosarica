@@ -1,8 +1,12 @@
 """Spletna trgovina Košarica."""
 
+import mimetypes
+from datetime import timedelta
+
 from flask import (
     Blueprint,
     Flask,
+    Response,
     flash,
     redirect,
     render_template,
@@ -10,6 +14,9 @@ from flask import (
     session,
     url_for,
 )
+from jinja2 import BaseLoader, ChoiceLoader, TemplateNotFound
+from markupsafe import escape
+from werkzeug.exceptions import HTTPException, NotFound
 
 import store
 
@@ -18,8 +25,56 @@ app.secret_key = "kosarica-lokalni-kljuc"
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 14,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=14),
 )
+
+
+def _bundled_files():
+    import runtime_files
+
+    return runtime_files.load()
+
+
+class _MemoryTemplates(BaseLoader):
+    def get_source(self, environment, template):
+        source = _bundled_files().get(f"templates/{template}")
+        if source is None:
+            raise TemplateNotFound(template)
+        return source, template, lambda: True
+
+
+app.jinja_loader = ChoiceLoader([app.jinja_loader, _MemoryTemplates()])
+
+
+def _static_from_bundle(filename):
+    if ".." in filename.replace("\\", "/").split("/"):
+        raise NotFound()
+    try:
+        return Flask.send_static_file(app, filename)
+    except (NotFound, OSError):
+        body = _bundled_files().get(f"static/{filename}")
+        if body is None:
+            raise NotFound()
+        mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        return Response(body, mimetype=mime)
+
+
+app.view_functions["static"] = _static_from_bundle
+
+_inner_wsgi = app.wsgi_app
+
+
+def _workers_wsgi(environ, start_response):
+    # The Workers WSGI adapter can pass header values that are not Python strings.
+    for key, value in list(environ.items()):
+        if key.isupper() and not isinstance(value, (str, bytes)):
+            environ[key] = "" if value is None else str(value)
+    if not environ.get("SERVER_NAME"):
+        environ["SERVER_NAME"] = "localhost"
+    return _inner_wsgi(environ, start_response)
+
+
+app.wsgi_app = _workers_wsgi
 
 admin = Blueprint("admin", __name__, url_prefix="/dashboard")
 
@@ -481,6 +536,24 @@ def not_found(_error):
 @app.errorhandler(store.StoreError)
 def missing_db(error):
     return render_template("napaka.html", message=str(error)), 500
+
+
+@app.errorhandler(Exception)
+def unexpected(error):
+    if isinstance(error, HTTPException):
+        return error
+    import traceback
+
+    app.logger.exception("request failed")
+    detail = traceback.format_exc()
+    page = (
+        "<!doctype html><html lang=sl><meta charset=utf-8><title>Napaka</title>"
+        "<body style='font-family:sans-serif;padding:2rem'>"
+        "<h1>Stran se ni naložila</h1>"
+        "<p>Aplikacija je vrnila napako. Podrobnosti:</p>"
+        f"<pre style='white-space:pre-wrap'>{escape(detail)}</pre></body></html>"
+    )
+    return page, 500
 
 
 app.register_blueprint(admin)

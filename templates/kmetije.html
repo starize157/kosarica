@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Kmetije · Košarica{% endblock %}
+{% block content %}
+<header class="page-head wrap">
+  <p class="eyebrow">Od kod je zelenjava</p>
+  <h1>Tri kmetije, ki jih lahko obiščeš v enem popoldnevu.</h1>
+  <p class="lead">{{ meta.season_note }}</p>
+</header>
+<section class="wrap farm-list">
+  {% for farm in farms %}
+    <article class="farm farm-long">
+      <p class="eyebrow">{{ farm.place }}</p>
+      <h2>{{ farm.name }}</h2>
+      <p class="grows">{{ farm.soil }}</p>
+      <p>{{ farm.text }}</p>
+      <p><strong>V košarici:</strong> {{ farm.grows }}</p>
+    </article>
+  {% endfor %}
+</section>
+<section class="wrap section">
+  <div class="section-head">
+    <p class="eyebrow">{{ meta.season }}</p>
+    <h2>Kaj je ta teden na voljo za menjavo.</h2>
+    <p class="lead">{{ meta.field_note }}</p>
+  </div>
+  <div class="season-grid">
+    {% for group in groups %}
+      <article>
+        <h3>{{ icon(group.icon) }} {{ group.name }}</h3>
+        <ul>
+          {% for item in group["items"] %}
+            <li>{{ item.name }} <em>{{ item.hint }}</em></li>
+          {% endfor %}
+        </ul>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

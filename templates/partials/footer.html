@@ -1,0 +1,30 @@
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <a class="logo" href="{{ url_for('index') }}">
+        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-basket"></use></svg>
+        <span><strong>Košarica</strong><small>od kmeta do vrat</small></span>
+      </a>
+      <p>Sezonska zelenjava s treh kmetij, enkrat na teden, v povratnem lesenem zaboju.</p>
+    </div>
+    <div>
+      <h2>Ponudba</h2>
+      <a href="{{ url_for('kosarice') }}">Velikosti košaric</a>
+      <a href="{{ url_for('kako') }}">Kako deluje</a>
+      <a href="{{ url_for('kmetije') }}">Kmetije</a>
+    </div>
+    <div>
+      <h2>Račun</h2>
+      <a href="{{ url_for('prijava') }}">Prijava</a>
+      <a href="{{ url_for('registracija') }}">Registracija</a>
+      <a href="{{ url_for('racun') }}">Moja košarica</a>
+      <a href="{{ url_for('pogoji') }}">Pogoji naročnine</a>
+    </div>
+    <div>
+      <h2>Dostava</h2>
+      <p>Torek, sreda, četrtek<br>{{ meta.window }}</p>
+      <p>zdravo@kosarica.si</p>
+      <a href="{{ url_for('admin.prijava') }}">Za kmetijo</a>
+    </div>
+  </div>
+</footer>

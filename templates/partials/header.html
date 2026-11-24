@@ -1,0 +1,32 @@
+<div class="announce">
+  <div class="wrap">{{ meta.season }} · sveža košarica vsak teden · dostava torek, sreda in četrtek</div>
+</div>
+<header class="site-header">
+  <div class="wrap header-bar">
+    <a class="logo" href="{{ url_for('index') }}">
+      <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-basket"></use></svg>
+      <span>
+        <strong>Košarica</strong>
+        <small>od kmeta do vrat</small>
+      </span>
+    </a>
+    <input class="nav-toggle" type="checkbox" id="nav-toggle">
+    <label class="nav-burger" for="nav-toggle"><span>Meni</span></label>
+    <nav class="nav-links" aria-label="Glavni meni">
+      <a href="{{ url_for('kosarice') }}" {% if request.path.startswith('/kosaric') %}aria-current="page"{% endif %}>Košarice</a>
+      <a href="{{ url_for('kako') }}" {% if request.path.startswith('/kako') %}aria-current="page"{% endif %}>Kako deluje</a>
+      <a href="{{ url_for('kmetije') }}" {% if request.path.startswith('/kmetije') %}aria-current="page"{% endif %}>Kmetije</a>
+    </nav>
+    <div class="nav-actions">
+      {% if current_user %}
+        <a class="nav-account" href="{{ url_for('racun') }}">{{ current_user.firstName }}</a>
+        <form method="post" action="{{ url_for('odjava') }}">
+          <button class="btn btn-ghost" type="submit">Odjava</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('prijava') }}">Prijava</a>
+        <a class="btn btn-primary" href="{{ url_for('kosarice') }}">Naroči košarico</a>
+      {% endif %}
+    </div>
+  </div>
+</header>

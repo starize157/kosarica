@@ -8,13 +8,25 @@ import hmac
 import json
 import os
 import re
-import threading
 from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = ROOT / "data" / "db.json"
-_lock = threading.RLock()
+_MEMORY = {"db": None}
+
+
+class _Guard:
+    """Workers can import threading, but locks there are not usable."""
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *exc):
+        return False
+
+
+_lock = _Guard()
 PBKDF_ROUNDS = 60_000
 DEMO_PASSWORD = "kosarica"
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -291,25 +303,48 @@ def admin_ok(username: str, password: str) -> bool:
     return user_match and pass_match
 
 
+def _memory_db() -> dict:
+    if _MEMORY["db"] is None:
+        import runtime_files
+
+        _MEMORY["db"] = json.loads(runtime_files.load()["data/db.json"])
+    return _MEMORY["db"]
+
+
+def _read_file():
+    if not DB_PATH.exists():
+        return None
+    try:
+        return json.loads(DB_PATH.read_text(encoding="utf-8"))
+    except OSError:
+        return None
+
+
 def _write_unlocked(db: dict) -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    temporary = DB_PATH.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(db, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(DB_PATH)
+    try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temporary = DB_PATH.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(db, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(DB_PATH)
+    except OSError:
+        _MEMORY["db"] = db
 
 
 def read_db() -> dict:
     with _lock:
-        if not DB_PATH.exists():
-            raise StoreError("Podatkovna baza manjka. V mapi projekta zaženi: python seed.py")
-        return json.loads(DB_PATH.read_text(encoding="utf-8"))
+        db = _read_file()
+        if db is None:
+            return copy.deepcopy(_memory_db())
+        return db
 
 
 def update_db(mutator):
     with _lock:
-        if not DB_PATH.exists():
-            raise StoreError("Podatkovna baza manjka. V mapi projekta zaženi: python seed.py")
-        db = json.loads(DB_PATH.read_text(encoding="utf-8"))
+        db = _read_file()
+        if db is None:
+            db = _memory_db()
+            result = mutator(db)
+            return result
         result = mutator(db)
         _write_unlocked(db)
         return result

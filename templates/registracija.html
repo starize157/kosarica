@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Registracija · Košarica{% endblock %}
+{% block content %}
+<section class="auth wrap">
+  <form class="auth-card" method="post">
+    <p class="eyebrow">Nov račun</p>
+    <h1>Odpri košarico</h1>
+    <p>Najprej račun, nato velikost in naslov. Geslo naj ima vsaj 6 znakov.</p>
+    <input type="hidden" name="naprej" value="{{ naprej }}">
+    <div class="form-grid">
+      <label>Ime
+        <input name="ime" autocomplete="given-name" required>
+      </label>
+      <label>Priimek
+        <input name="priimek" autocomplete="family-name" required>
+      </label>
+    </div>
+    <label>E-pošta
+      <input type="email" name="email" autocomplete="email" required>
+    </label>
+    <div class="form-grid">
+      <label>Geslo
+        <input type="password" name="geslo" autocomplete="new-password" required minlength="6">
+      </label>
+      <label>Ponovi geslo
+        <input type="password" name="geslo2" autocomplete="new-password" required minlength="6">
+      </label>
+    </div>
+    <button class="btn btn-primary btn-full" type="submit">Ustvari račun</button>
+    <p class="auth-switch">Že imaš račun? <a href="{{ url_for('prijava', naprej=naprej) }}">Prijava</a></p>
+  </form>
+</section>
+{% endblock %}

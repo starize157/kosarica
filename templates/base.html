@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Košarica · od kmeta do vrat{% endblock %}</title>
+  <meta name="description" content="{% block description %}Tedenska košarica sezonske zelenjave. Tri velikosti, menjava sestavin in dostava pred vrata.{% endblock %}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,620&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% include "partials/sprite.html" %}
+  {% block body %}
+    {% include "partials/header.html" %}
+    <main>
+      {% include "partials/flash.html" %}
+      {% block content %}{% endblock %}
+    </main>
+    {% include "partials/footer.html" %}
+  {% endblock %}
+  <script src="{{ url_for('static', filename='js/site.js') }}"></script>
+</body>
+</html>

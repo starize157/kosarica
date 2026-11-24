@@ -1,0 +1,63 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Dostave · Košarica{% endblock %}
+{% block panel %}
+<header class="dash-head">
+  <div>
+    <p class="eyebrow">Potni list</p>
+    <h1>{{ board.label }}</h1>
+  </div>
+  <form method="get" class="inline-form">
+    <select name="teden" onchange="this.form.submit()">
+      {% for week in weeks %}
+        <option value="{{ week.value }}" {% if teden == week.value %}selected{% endif %}>{{ week.label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</header>
+{% if board.paused %}
+  <p class="help wrap-tight">{{ board.paused }} pavziranih košaric ta teden ni na seznamu za vožnjo.</p>
+{% endif %}
+<section class="board">
+  {% for day in board.days %}
+    <article class="panel">
+      <header class="row-between">
+        <h2>{{ day.label|cap }}</h2>
+        <span>{{ day.date|sidate }} · {{ day.orders|length }}</span>
+      </header>
+      {% if day.orders %}
+        <ul class="stops">
+          {% for order in day.orders %}
+            <li class="stop">
+              <div class="row-between">
+                <strong><a href="{{ url_for('admin.narocilo', order_id=order.id) }}">{{ order.customer }}</a></strong>
+                <span class="status st-{{ order.status }}">{{ order.statusName }}</span>
+              </div>
+              <p>{{ order.address.street }}, {{ order.address.postal }} {{ order.address.city }}</p>
+              {% if order.address.notes %}<p class="note">{{ order.address.notes }}</p>{% endif %}
+              <p class="stop-meta">{{ order.sizeName }} · {{ order.phone or "brez telefona" }} · {{ order.id }}</p>
+              <ul>
+                {% for item in order["items"] %}
+                  <li class="{% if item.swapped %}is-swap{% endif %}">
+                    {{ item.name }} <em>{{ item.qty }}</em>
+                    {% if item.swapped %}<small>namesto {{ item.insteadOf }}</small>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+              <form method="post" action="{{ url_for('admin.status', order_id=order.id) }}">
+                <input type="hidden" name="naprej" value="{{ request.full_path }}">
+                <select name="status" aria-label="Status za {{ order.customer }}" onchange="this.form.submit()">
+                  {% for key, label in status_label.items() %}
+                    <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="help">Ni postankov.</p>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

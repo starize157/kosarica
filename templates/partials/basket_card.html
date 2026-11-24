@@ -1,0 +1,23 @@
+{% macro basket_card(basket, detailed=false) -%}
+<article class="basket-card{% if basket.id == 'srednja' %} is-featured{% endif %}">
+  {% if basket.id == 'srednja' %}<p class="flag">Najpogosteje izbrana</p>{% endif %}
+  <p class="eyebrow">{{ basket.people }}</p>
+  <h2>{{ basket.name }}</h2>
+  <p class="price"><strong>{{ basket.price }} €</strong> <span>/ mesec</span></p>
+  <p class="per">{{ basket.weekly }} € na košarico · 4 dostave · dostava vključena</p>
+  <p class="card-text">{{ basket.text }}</p>
+  <ul class="meta-list">
+    <li>{{ basket.weight }}</li>
+    <li>{{ basket.pieces }} sestavin</li>
+    <li>do {{ basket.swaps }} menjav</li>
+  </ul>
+  {% if detailed %}
+    <ul class="ingredient-list">
+      {% for item in basket["items"] %}
+        <li><span>{{ item.name }}</span><em>{{ item.qty_label }}</em></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <a class="btn {% if basket.id == 'srednja' %}btn-primary{% else %}btn-dark{% endif %}" href="{{ url_for('kosarica', size=basket.id) }}">Sestavi {{ basket.name|lower }}</a>
+</article>
+{%- endmacro %}

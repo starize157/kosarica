@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Strani ni · Košarica{% endblock %}
+{% block content %}
+<section class="wrap empty-state">
+  <p class="eyebrow">404</p>
+  <h1>Te poti ni.</h1>
+  <p>Košarica je ostala na znanih straneh.</p>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">Na začetek</a>
+</section>
+{% endblock %}

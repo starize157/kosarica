@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block body_class %}is-dashboard{% endblock %}
+{% block body %}
+<div class="dash">
+  <aside class="dash-side">
+    <a class="logo light" href="{{ url_for('admin.pregled') }}">
+      <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-basket"></use></svg>
+      <span><strong>Košarica</strong><small>pregled kmetije</small></span>
+    </a>
+    <nav class="dash-nav" aria-label="Pregled">
+      <a href="{{ url_for('admin.pregled') }}" {% if request.endpoint == 'admin.pregled' %}aria-current="page"{% endif %}>Pregled</a>
+      <a href="{{ url_for('admin.narocila') }}" {% if request.endpoint in ['admin.narocila', 'admin.narocilo'] %}aria-current="page"{% endif %}>Naročila <em>{{ nav_counts.narocila }}</em></a>
+      <a href="{{ url_for('admin.stranke') }}" {% if request.endpoint == 'admin.stranke' %}aria-current="page"{% endif %}>Stranke <em>{{ nav_counts.stranke }}</em></a>
+      <a href="{{ url_for('admin.dostave') }}" {% if request.endpoint == 'admin.dostave' %}aria-current="page"{% endif %}>Dostave <em>{{ nav_counts.dostave }}</em></a>
+    </nav>
+    <div class="dash-side-foot">
+      <p>Prijavljen: uurbanija</p>
+      <a href="{{ url_for('index') }}">V trgovino</a>
+      <form method="post" action="{{ url_for('admin.odjava') }}">
+        <button type="submit">Odjava</button>
+      </form>
+    </div>
+  </aside>
+  <div class="dash-main">
+    {% include "partials/flash.html" %}
+    {% block panel %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

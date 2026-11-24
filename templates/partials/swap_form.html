@@ -1,0 +1,36 @@
+<form
+  method="post"
+  action="{{ action }}"
+  class="swap-form"
+  data-swap-form
+  data-max="{{ basket.swaps }}"
+  data-base='{{ basket.produce | tojson }}'
+  data-names='{{ names | tojson }}'
+>
+  <div class="swap-head">
+    <p>Lahko zamenjaš do {{ basket.swaps }} sestavin. Ostalo določi njiva.</p>
+    <strong data-swap-note>0 / {{ basket.swaps }} menjav</strong>
+  </div>
+  <ul class="swap-list">
+    {% for item in basket["items"] %}
+      <li>
+        <div>
+          <strong>{{ item.name }}</strong>
+          <em>{{ item.qty_label }}</em>
+          <small>{{ item.hint }}</small>
+        </div>
+        <label>
+          <span>Zamenjaj</span>
+          <select name="swap_{{ item.id }}" data-swap>
+            <option value="">Obdrži</option>
+            {% for alt in options %}
+              <option value="{{ alt.id }}" {% if selected.get(item.id) == alt.id %}selected{% endif %}>{{ alt.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="preview">V košarici bo: <span data-preview></span></p>
+  <button class="btn btn-primary" type="submit">{{ button }}</button>
+</form>

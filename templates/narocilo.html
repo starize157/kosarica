@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Dostava · Košarica{% endblock %}
+{% block content %}
+<header class="page-head wrap">
+  <p class="eyebrow">Lokacija</p>
+  <h1>Kam ti pripeljemo zaboj?</h1>
+  <p class="lead">Dostava je vključena v naročnino. Izberi dan med torkom in četrtkom in dopiši, kje zaboj počaka.</p>
+</header>
+<section class="wrap checkout">
+  <form class="panel" method="post">
+    <label>Ulica in hišna številka
+      <input name="ulica" autocomplete="street-address" required value="{{ values.ulica }}">
+    </label>
+    <div class="form-grid">
+      <label>Pošta
+        <input name="posta" inputmode="numeric" autocomplete="postal-code" required maxlength="4" value="{{ values.posta }}">
+      </label>
+      <label>Kraj
+        <input name="mesto" autocomplete="address-level2" required value="{{ values.mesto }}">
+      </label>
+    </div>
+    <label>Telefon
+      <input name="telefon" autocomplete="tel" value="{{ values.telefon }}">
+    </label>
+    <fieldset>
+      <legend>Dan dostave</legend>
+      <div class="days">
+        {% for key, label in day_label.items() %}
+          <label class="day">
+            <input type="radio" name="dan" value="{{ key }}" {% if values.dan == key %}checked{% endif %} required>
+            <span>{{ label|cap }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <label>Opombe za voznika
+      <textarea name="opombe" rows="3" placeholder="Nadstropje, koda, pustite pri sosedu">{{ values.opombe }}</textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">{% if existing %}Posodobi naročnino{% else %}Potrdi naročnino{% endif %}</button>
+    <p class="help">Kartice v tej različici ne bremenimo. Naročilo se zapiše in se pokaže na pregledu kmetije. Račun bi sicer šel enkrat mesečno.</p>
+  </form>
+  <aside class="summary-card">
+    <p class="eyebrow">{{ basket.name }} košarica</p>
+    <p class="price"><strong>{{ basket.price }} €</strong> <span>/ mesec</span></p>
+    <p>{{ basket.people }} · {{ basket.weekly }} € na dostavo</p>
+    <ul class="ingredient-list">
+      {% for item in items %}
+        <li>
+          <span>{{ item.name }}{% if item.swapped %} <em class="badge">namesto {{ item.insteadOf }}</em>{% endif %}</span>
+          <em>{{ item.qty }}</em>
+        </li>
+      {% endfor %}
+    </ul>
+    <a href="{{ url_for('kosarica', size=basket.id) }}">Uredi sestavo</a>
+  </aside>
+</section>
+{% endblock %}

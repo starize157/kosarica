@@ -1,0 +1,103 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Pregled · Košarica{% endblock %}
+{% block panel %}
+<header class="dash-head">
+  <div>
+    <p class="eyebrow">{{ stats.todayLabel }}</p>
+    <h1>Ta teden, {{ stats.weekLabel }}</h1>
+  </div>
+  <a class="btn btn-dark" href="{{ url_for('admin.dostave') }}">Odpri dostave</a>
+</header>
+<section class="kpis">
+  <article class="kpi">
+    <span>Aktivne naročnine</span>
+    <strong>{{ stats.active }}</strong>
+    <small>{{ stats.paused }} pavzirana · {{ stats.customers }} strank</small>
+  </article>
+  <article class="kpi">
+    <span>Mesečni prihodek</span>
+    <strong>{{ stats.mrr }} €</strong>
+    <small>dostava vključena, brez pavz</small>
+  </article>
+  <article class="kpi">
+    <span>Košarice ta teden</span>
+    <strong>{{ stats.weekBaskets }}</strong>
+    <small>{{ stats.onRoute }} na poti · {{ stats.deliveredToday }} že dostavljenih</small>
+  </article>
+  <article class="kpi">
+    <span>Menjave ta teden</span>
+    <strong>{{ stats.swaps }}</strong>
+    <small>sestavin, ki niso privzete</small>
+  </article>
+</section>
+<section class="dash-grid">
+  <article class="panel">
+    <h2>Velikosti</h2>
+    <ul class="bars">
+      {% for row in stats.sizes %}
+        <li>
+          <div class="bar-label"><span>{{ row.name }}</span><span>{{ row.count }} · {{ row.share }} %</span></div>
+          <div class="bar"><span style="width: {{ row.share }}%"></span></div>
+        </li>
+      {% endfor %}
+    </ul>
+  </article>
+  <article class="panel">
+    <h2>Zadnjih tednov</h2>
+    <div class="week-chart">
+      {% for week in stats.weeks %}
+        <div class="week-col{% if week.current %} is-current{% endif %}">
+          <div class="week-plot"><div class="week-bar" style="height: {{ week.share }}%"></div></div>
+          <span>{{ week.count }}</span>
+          <small>{{ week.label }}</small>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+  <article class="panel">
+    <h2>Status ta teden</h2>
+    <ul class="status-list">
+      {% for row in stats.statuses %}
+        <li><span class="status st-{{ row.id }}">{{ row.name }}</span><strong>{{ row.count }}</strong></li>
+      {% endfor %}
+    </ul>
+    {% if stats.pausedThisWeek %}
+      <p class="help">{{ stats.pausedThisWeek }} pavzirana košarica ta teden ni na poti.</p>
+    {% endif %}
+  </article>
+  <article class="panel">
+    <h2>Kje smo ta teden</h2>
+    <ul class="city-list">
+      {% for row in stats.cities %}
+        <li><span>{{ row.city }}</span><strong>{{ row.count }}</strong></li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+<section class="panel">
+  <div class="row-between">
+    <h2>Zadnja naročila</h2>
+    <a href="{{ url_for('admin.narocila', teden='vsi') }}">Vsa naročila</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Številka</th><th>Stranka</th><th>Kraj</th><th>Velikost</th><th>Datum</th><th>Status</th><th>Menjave</th></tr>
+      </thead>
+      <tbody>
+        {% for order in stats.recent %}
+          <tr>
+            <td><a href="{{ url_for('admin.narocilo', order_id=order.id) }}">{{ order.id }}</a></td>
+            <td>{{ order.customer }}</td>
+            <td>{{ order.address.city }}</td>
+            <td>{{ order.sizeName }}</td>
+            <td>{{ order.deliveryDate|sidate }}</td>
+            <td><span class="status st-{{ order.status }}">{{ order.statusName }}</span></td>
+            <td>{{ order.swapCount }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

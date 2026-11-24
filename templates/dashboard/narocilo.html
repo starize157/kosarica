@@ -1,0 +1,49 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ order.id }} · Košarica{% endblock %}
+{% block panel %}
+<header class="dash-head">
+  <div>
+    <p class="eyebrow"><a href="{{ url_for('admin.narocila') }}">Naročila</a></p>
+    <h1>{{ order.id }}</h1>
+  </div>
+  <span class="status st-{{ order.status }}">{{ order.statusName }}</span>
+</header>
+<section class="detail-grid">
+  <article class="panel">
+    <h2>{{ order.customer }}</h2>
+    <p>{{ order.email }}{% if order.phone %} · {{ order.phone }}{% endif %}</p>
+    <p>{{ order.address.street }}<br>{{ order.address.postal }} {{ order.address.city }}</p>
+    {% if order.address.notes %}<p class="note">{{ order.address.notes }}</p>{% endif %}
+    <ul class="meta-list">
+      <li>{{ order.sizeName }} košarica</li>
+      <li>{{ order.dayName|cap }}, {{ order.deliveryDate|sidate }}</li>
+      <li>{{ order.priceMonthly|eur }} / mesec</li>
+    </ul>
+    <form class="status-form" method="post" action="{{ url_for('admin.status', order_id=order.id) }}">
+      <input type="hidden" name="naprej" value="{{ request.full_path }}">
+      <label>Status
+        <select name="status">
+          {% for key, label in status_label.items() %}
+            <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn btn-dark" type="submit">Shrani status</button>
+    </form>
+  </article>
+  <article class="panel">
+    <h2>Vsebina</h2>
+    <ul class="ingredient-list">
+      {% for item in order["items"] %}
+        <li>
+          <span>
+            {{ item.name }}
+            {% if item.swapped %}<em class="badge">namesto {{ item.insteadOf }}</em>{% endif %}
+          </span>
+          <em>{{ item.qty }}</em>
+        </li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+{% endblock %}

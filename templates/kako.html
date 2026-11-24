@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Kako deluje · Košarica{% endblock %}
+{% block content %}
+<header class="page-head wrap">
+  <p class="eyebrow">Naročnina</p>
+  <h1>Enkrat se prijaviš. Potem samo kuhaš.</h1>
+  <p class="lead">Košarica je mesečna naročnina na tedensko zelenjavo. Ni spletnega nakupovalnega vozička z desetimi kliki vsak teden.</p>
+</header>
+<section class="wrap steps-page">
+  <article>
+    <span>1</span>
+    <h2>Odpreš račun</h2>
+    <p>Ime, e-pošta in geslo. Račun hrani naslov, dan dostave in tisto, kar si zamenjal v košarici.</p>
+  </article>
+  <article>
+    <span>2</span>
+    <h2>Izbereš velikost</h2>
+    <p>Mala je za enega ali dva, srednja za običajno gospodinjstvo, velika za dolgo mizo. Velikost lahko kasneje zamenjaš.</p>
+  </article>
+  <article>
+    <span>3</span>
+    <h2>Poveš, kam</h2>
+    <p>Ulica, poštna številka, kraj in dan. V opombe dopiši nadstropje, kodo ali »pustite pri sosedu«.</p>
+  </article>
+  <article>
+    <span>4</span>
+    <h2>Vsak teden zaboj</h2>
+    <p>Pakiramo dan prej, vozimo med {{ meta.window }}. Lesen zaboj vrneš naslednji teden, ko pripeljemo novega.</p>
+  </article>
+</section>
+<section class="wrap section">
+  <div class="section-head">
+    <p class="eyebrow">Vprašanja</p>
+    <h2>Kar ljudje vprašajo, preden naročijo.</h2>
+  </div>
+  <div class="faq">
+    {% for item in faqs %}
+      <details {% if loop.first %}open{% endif %}>
+        <summary>{{ item.q }}</summary>
+        <p>{{ item.a }}</p>
+      </details>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

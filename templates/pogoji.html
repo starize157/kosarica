@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Pogoji naročnine · Košarica{% endblock %}
+{% block content %}
+<article class="wrap prose">
+  <p class="eyebrow">Naročnina</p>
+  <h1>Pogoji, na kratko.</h1>
+  <p>Košarica je mesečna naročnina. V ceni so štiri tedenske dostave izbrane velikosti. Dostava po Sloveniji je vključena.</p>
+  <h2>Kaj je v zaboju</h2>
+  <p>Zelenjava sezone, ne fiksen seznam, ki bi bil enak januarja in julija. Pred potrditvijo vidiš sestavo tega tedna. Do dogovorjenega števila sestavin lahko zamenjaš. Menjava velja za košarice, ki še niso v pakiranju.</p>
+  <h2>Dostava</h2>
+  <p>Vozi se torek, sreda in četrtek, med {{ meta.window }}. Zaboj pustimo na mestu, ki ga napišeš. Lesen zaboj vzamemo nazaj ob naslednji dostavi. Za odmaknjene zaselke se pred prvim obiskom oglasimo.</p>
+  <h2>Pavza in spremembe</h2>
+  <p>Naročnino lahko pavziraš v računu. Pavza ustavi košarice, ki jih še nismo odpeljali. Velikost, dan in naslov spremeniš tam. Košarica, ki je že na poti, ostane takšna, kot je bila zapakirana.</p>
+  <h2>Plačilo</h2>
+  <p>Račun je enkrat mesečno. V tej različici strani kartice še ne bremenimo: naročilo se shrani in se pokaže na pregledu kmetije.</p>
+  <p><a href="{{ url_for('kosarice') }}">Nazaj na košarice</a></p>
+</article>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Stranke · Košarica{% endblock %}
+{% block panel %}
+<header class="dash-head">
+  <div>
+    <p class="eyebrow">{{ rows|length }} strank</p>
+    <h1>Stranke</h1>
+  </div>
+</header>
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Ime, e-pošta, kraj">
+  <button class="btn btn-dark" type="submit">Najdi</button>
+</form>
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Stranka</th><th>Kraj</th><th>Košarica</th><th>Dan</th><th>Menjave</th><th>Dostavljeno</th><th>Od</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.name }}<small>{{ row.email }}{% if row.phone %} · {{ row.phone }}{% endif %}</small></td>
+            <td>
+              {% if row.address %}
+                {{ row.address.city }}<small>{{ row.address.street }}</small>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if row.subscription %}
+                {{ row.subscription.sizeName }} · {{ row.subscription.price }} €
+                <small class="status st-{{ 'pavzirano' if row.subscription.status == 'pavzirana' else 'dostavljeno' }}">{{ row.subscription.statusName }}</small>
+              {% else %}
+                Brez naročnine
+              {% endif %}
+            </td>
+            <td>{% if row.subscription %}{{ row.subscription.dayName|cap }}{% endif %}</td>
+            <td>
+              {% if row.subscription and row.subscription.swapLines %}
+                {% for line in row.subscription.swapLines %}<small>{{ line }}</small>{% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>{{ row.delivered }}</td>
+            <td>{{ row.createdAt|sidate }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">Ni strank za ta iskalni niz.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

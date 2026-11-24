@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "partials/basket_card.html" import basket_card %}
+{% block title %}Košarice · Košarica{% endblock %}
+{% block content %}
+<header class="page-head wrap">
+  <p class="eyebrow">Ponudba</p>
+  <h1>Izberi velikost glede na mizo.</h1>
+  <p class="lead">Vse tri košarice imajo isto sezono. Razlikujejo se po teži, številu sestavin in tem, koliko jih lahko zamenjaš. Cena je za štiri tedenske dostave.</p>
+</header>
+<section class="wrap section tight">
+  <div class="basket-grid">
+    {% for basket in baskets %}
+      {{ basket_card(basket, true) }}
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

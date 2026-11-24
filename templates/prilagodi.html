@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ basket.name }} košarica · Košarica{% endblock %}
+{% block content %}
+<header class="page-head wrap">
+  <p class="eyebrow">{{ basket.people }} · {{ basket.price }} € / mesec</p>
+  <h1>{{ basket.name }} košarica.</h1>
+  <p class="lead">{{ basket.text }} Zamenjaš lahko do {{ basket.swaps }} sestavin iz letošnje ponudbe.</p>
+</header>
+<section class="wrap builder">
+  <div class="panel">
+    {% include "partials/swap_form.html" %}
+  </div>
+  <aside class="summary-card">
+    <p class="eyebrow">Povzetek</p>
+    <h2>{{ basket.name }}</h2>
+    <p class="price"><strong>{{ basket.price }} €</strong> <span>/ mesec</span></p>
+    <ul class="meta-list">
+      <li>{{ basket.weight }}</li>
+      <li>{{ basket.weekly }} € na dostavo</li>
+      <li>{{ meta.season }}</li>
+    </ul>
+    <p>Naslednji korak je prijava in naslov, kamor zaboj pripeljemo.</p>
+    <a href="{{ url_for('kosarice') }}">Druga velikost</a>
+  </aside>
+</section>
+{% endblock %}

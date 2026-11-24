@@ -1,0 +1,67 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Naročila · Košarica{% endblock %}
+{% block panel %}
+<header class="dash-head">
+  <div>
+    <p class="eyebrow">{{ result.total }} zapisov</p>
+    <h1>Naročila</h1>
+  </div>
+</header>
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ filters.q }}" placeholder="Ime, kraj, številka">
+  <select name="teden">
+    <option value="vsi" {% if filters.teden == 'vsi' %}selected{% endif %}>Vsi tedni</option>
+    {% for week in weeks %}
+      <option value="{{ week.value }}" {% if filters.teden == week.value %}selected{% endif %}>{{ week.label }}</option>
+    {% endfor %}
+  </select>
+  <select name="status">
+    <option value="">Vsi statusi</option>
+    {% for key, label in statuses.items() %}
+      <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="size">
+    <option value="">Vse velikosti</option>
+    {% for key, basket in baskets.items() %}
+      <option value="{{ key }}" {% if filters.size == key %}selected{% endif %}>{{ basket.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-dark" type="submit">Prikaži</button>
+</form>
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Številka</th><th>Stranka</th><th>Naslov</th><th>Velikost</th><th>Dan</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for order in result.rows %}
+          <tr>
+            <td><a href="{{ url_for('admin.narocilo', order_id=order.id) }}">{{ order.id }}</a></td>
+            <td>{{ order.customer }}<small>{{ order.email }}</small></td>
+            <td>{{ order.address.street }}<small>{{ order.address.postal }} {{ order.address.city }}</small></td>
+            <td>{{ order.sizeName }}{% if order.swapCount %} <small>{{ order.swapCount }} menjave</small>{% endif %}</td>
+            <td>{{ order.dayName|cap }}<small>{{ order.deliveryDate|sidate }}</small></td>
+            <td><span class="status st-{{ order.status }}">{{ order.statusName }}</span></td>
+            <td><a href="{{ url_for('admin.narocilo', order_id=order.id) }}">Odpri</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">Ni naročil za ta filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if result.pages > 1 %}
+    <nav class="pager">
+      {% if result.page > 1 %}
+        <a href="{{ url_for('admin.narocila', stran=result.page-1, q=filters.q, status=filters.status, size=filters.size, teden=filters.teden) }}">Nazaj</a>
+      {% endif %}
+      <span>{{ result.page }} / {{ result.pages }}</span>
+      {% if result.page < result.pages %}
+        <a href="{{ url_for('admin.narocila', stran=result.page+1, q=filters.q, status=filters.status, size=filters.size, teden=filters.teden) }}">Naprej</a>
+      {% endif %}
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}
