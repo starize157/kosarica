@@ -1,4 +1,4 @@
-"""Košarica: sezonske košarice, naročnine in JSON baza."""
+"""Svežinka: sezonske košarice, naročnine in JSON baza."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import hmac
 import json
 import os
 import re
+import urllib.error
+import urllib.request
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -32,7 +34,7 @@ DEMO_PASSWORD = "kosarica"
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 META = {
-    "brand": "Košarica",
+    "brand": "Svežinka",
     "tagline": "Od kmeta do vrat",
     "season": "Pozna jesen",
     "season_note": "Zemlja se ohlaja. V zaboj gredo korenovke, ohrovti in buče, ki so ta teden dozorele na treh kmetijah.",
@@ -311,6 +313,207 @@ def _memory_db() -> dict:
     return _MEMORY["db"]
 
 
+def _binding(env, name):
+    if env is None:
+        return ""
+    try:
+        value = getattr(env, name)
+    except Exception:
+        value = None
+    if not value:
+        try:
+            value = env[name]
+        except Exception:
+            value = None
+    return str(value).strip() if value else ""
+
+
+def _credentials():
+    url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    if not (url and key):
+        try:
+            from flask import has_request_context, request
+        except ImportError:
+            return None
+        if not has_request_context():
+            return None
+        env = request.environ.get("workers.env")
+        url = _binding(env, "SUPABASE_URL").rstrip("/")
+        key = _binding(env, "SUPABASE_SERVICE_ROLE_KEY")
+    if url and key:
+        return url, key
+    return None
+
+
+def _supabase_request(creds, method, path, body=None):
+    url, key = creds
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    request = urllib.request.Request(
+        f"{url}/rest/v1/{path}",
+        data=data,
+        method=method,
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+            "Range": "0-1999",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")[:240]
+        raise StoreError(f"Supabase ni sprejel podatkov ({error.code}). {detail}") from error
+    except OSError as error:
+        raise StoreError("Povezava s Supabase ni uspela.") from error
+    if not raw:
+        return []
+    return json.loads(raw)
+
+
+def _address_from_row(row):
+    if not row.get("street") and not row.get("city"):
+        return None
+    return {
+        "street": row.get("street") or "",
+        "postal": row.get("postal") or "",
+        "city": row.get("city") or "",
+        "notes": row.get("notes") or "",
+    }
+
+
+def _rows_to_db(customers, subscriptions, orders) -> dict:
+    users = []
+    for row in customers:
+        users.append(
+            {
+                "id": row["id"],
+                "firstName": row["first_name"],
+                "lastName": row["last_name"],
+                "email": row["email"],
+                "phone": row.get("phone") or "",
+                "passwordSalt": row.get("password_salt") or "",
+                "passwordHash": row.get("password_hash") or "",
+                "address": _address_from_row(row),
+                "createdAt": str(row["created_at"])[:10],
+            }
+        )
+    subs = []
+    for row in subscriptions:
+        subs.append(
+            {
+                "id": row["id"],
+                "userId": row["user_id"],
+                "size": row["size"],
+                "status": row["status"],
+                "deliveryDay": row["delivery_day"],
+                "swaps": row.get("swaps") or [],
+                "startedAt": str(row["started_at"])[:10],
+                "pausedAt": str(row["paused_at"])[:10] if row.get("paused_at") else None,
+            }
+        )
+    parsed_orders = []
+    for row in orders:
+        parsed_orders.append(
+            {
+                "id": row["id"],
+                "userId": row["user_id"],
+                "subscriptionId": row["subscription_id"],
+                "weekOf": str(row["week_of"])[:10],
+                "deliveryDate": str(row["delivery_date"])[:10],
+                "deliveryDay": row["delivery_day"],
+                "size": row["size"],
+                "status": row["status"],
+                "items": row.get("items") or [],
+                "address": _address_from_row(row) or {"street": "", "postal": "", "city": "", "notes": ""},
+                "priceMonthly": row["price_monthly"],
+            }
+        )
+    return {"users": users, "subscriptions": subs, "orders": parsed_orders}
+
+
+def _customer_row(user):
+    address = user.get("address") or {}
+    return {
+        "id": user["id"],
+        "first_name": user["firstName"],
+        "last_name": user["lastName"],
+        "email": user["email"],
+        "phone": user.get("phone") or "",
+        "password_salt": user.get("passwordSalt") or None,
+        "password_hash": user.get("passwordHash") or None,
+        "street": address.get("street") or "",
+        "postal": address.get("postal") or "",
+        "city": address.get("city") or "",
+        "notes": address.get("notes") or "",
+        "created_at": user["createdAt"],
+    }
+
+
+def _subscription_row(sub):
+    return {
+        "id": sub["id"],
+        "user_id": sub["userId"],
+        "size": sub["size"],
+        "status": sub["status"],
+        "delivery_day": sub["deliveryDay"],
+        "swaps": sub.get("swaps") or [],
+        "started_at": sub["startedAt"],
+        "paused_at": sub.get("pausedAt"),
+    }
+
+
+def _order_row(order):
+    address = order.get("address") or {}
+    return {
+        "id": order["id"],
+        "user_id": order["userId"],
+        "subscription_id": order["subscriptionId"],
+        "week_of": order["weekOf"],
+        "delivery_date": order["deliveryDate"],
+        "delivery_day": order["deliveryDay"],
+        "size": order["size"],
+        "status": order["status"],
+        "items": order.get("items") or [],
+        "street": address.get("street") or "",
+        "postal": address.get("postal") or "",
+        "city": address.get("city") or "",
+        "notes": address.get("notes") or "",
+        "price_monthly": order["priceMonthly"],
+    }
+
+
+def _upsert(creds, table, rows):
+    for start in range(0, len(rows), 40):
+        chunk = rows[start : start + 40]
+        _supabase_request(creds, "POST", f"{table}?on_conflict=id", chunk)
+
+
+def _delete_missing(creds, table, ids):
+    if not ids:
+        _supabase_request(creds, "DELETE", f"{table}?id=not.is.null")
+        return
+    listed = ",".join(f'"{item}"' for item in ids)
+    _supabase_request(creds, "DELETE", f"{table}?id=not.in.({listed})")
+
+
+def _load_supabase(creds) -> dict:
+    customers = _supabase_request(creds, "GET", "customers?select=*")
+    subscriptions = _supabase_request(creds, "GET", "subscriptions?select=*")
+    orders = _supabase_request(creds, "GET", "orders?select=*")
+    return _rows_to_db(customers, subscriptions, orders)
+
+
+def _save_supabase(creds, db: dict) -> None:
+    _upsert(creds, "customers", [_customer_row(user) for user in db["users"]])
+    _upsert(creds, "subscriptions", [_subscription_row(sub) for sub in db["subscriptions"]])
+    _upsert(creds, "orders", [_order_row(order) for order in db["orders"]])
+    _delete_missing(creds, "orders", [order["id"] for order in db["orders"]])
+
+
 def _read_file():
     if not DB_PATH.exists():
         return None
@@ -330,23 +533,37 @@ def _write_unlocked(db: dict) -> None:
         _MEMORY["db"] = db
 
 
+def _load_unlocked() -> dict:
+    creds = _credentials()
+    if creds:
+        return _load_supabase(creds)
+    db = _read_file()
+    if db is None:
+        return copy.deepcopy(_memory_db())
+    return db
+
+
+def _save_unlocked(db: dict) -> None:
+    creds = _credentials()
+    if creds:
+        _save_supabase(creds, db)
+        return
+    if _read_file() is None and not DB_PATH.exists():
+        _MEMORY["db"] = db
+        return
+    _write_unlocked(db)
+
+
 def read_db() -> dict:
     with _lock:
-        db = _read_file()
-        if db is None:
-            return copy.deepcopy(_memory_db())
-        return db
+        return _load_unlocked()
 
 
 def update_db(mutator):
     with _lock:
-        db = _read_file()
-        if db is None:
-            db = _memory_db()
-            result = mutator(db)
-            return result
+        db = _load_unlocked()
         result = mutator(db)
-        _write_unlocked(db)
+        _save_unlocked(db)
         return result
 
 
