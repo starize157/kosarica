@@ -1,4 +1,4 @@
-"""Spletna trgovina Košarica."""
+"""Spletna trgovina Svežinka."""
 
 import mimetypes
 from datetime import timedelta
@@ -86,22 +86,26 @@ def safe_next(value):
 
 
 def load_current_user():
-    user_id = session.get("user_id")
-    if not user_id:
+    user_id = store.as_text(session.get("user_id"))
+    email = store.as_text(session.get("user_email")).lower()
+    if not user_id and not email:
         return None
-    try:
-        db = store.read_db()
-    except store.StoreError:
-        return None
-    user = store.get_user(db, user_id)
-    if not user:
+    db = store.read_db()
+    user = store.get_user(db, user_id) if user_id else None
+    if user is None and email:
+        user = store.get_user_by_email(db, email)
+    if user is None:
         session.pop("user_id", None)
+        session.pop("user_email", None)
+        return None
+    session["user_id"] = user["id"]
+    session["user_email"] = user["email"]
     return user
 
 
 def login_required(view):
     def wrapped(*args, **kwargs):
-        if not session.get("user_id"):
+        if not load_current_user():
             return redirect(url_for("prijava", naprej=request.path))
         return view(*args, **kwargs)
 
@@ -139,7 +143,8 @@ def cap_filter(value):
 
 def remember_user(user):
     session.permanent = True
-    session["user_id"] = user["id"]
+    session["user_id"] = store.as_text(user["id"])
+    session["user_email"] = store.as_text(user["email"]).lower()
 
 
 @app.route("/")
@@ -214,7 +219,7 @@ def pogoji():
 @app.route("/prijava", methods=["GET", "POST"])
 def prijava():
     naprej = safe_next(request.values.get("naprej"))
-    if session.get("user_id") and request.method == "GET":
+    if request.method == "GET" and load_current_user():
         return redirect(naprej or url_for("racun"))
     if request.method == "POST":
         try:
@@ -250,6 +255,7 @@ def registracija():
 @app.route("/odjava", methods=["POST"])
 def odjava():
     session.pop("user_id", None)
+    session.pop("user_email", None)
     flash("Odjavljen si.")
     return redirect(url_for("index"))
 
@@ -267,6 +273,8 @@ def narocilo():
         flash(str(error))
         return redirect(url_for("kosarica", size=draft["size"]))
     user = load_current_user()
+    if not user:
+        return redirect(url_for("prijava", naprej=request.path))
     sub = store.present_subscription(store.get_subscription(store.read_db(), user["id"]))
     values = store.address_values(user, request.form if request.method == "POST" else None, (sub or {}).get("deliveryDay", ""))
     if request.method == "POST":
@@ -308,7 +316,7 @@ def potrditev():
         return redirect(url_for("racun"))
     db = store.read_db()
     order = store.get_order(db, order_id)
-    if not order or order["userId"] != session.get("user_id"):
+    if not order or store.as_text(order["userId"]) != store.as_text(session.get("user_id")):
         return redirect(url_for("racun"))
     sub = store.present_subscription(store.get_subscription(db, session["user_id"]))
     return render_template("potrditev.html", order=store.present_order(db, order), subscription=sub)
@@ -567,5 +575,5 @@ else:
 
 
 if __name__ == "__main__":
-    print("Košarica teče na http://127.0.0.1:5050")
+    print("Svežinka teče na http://127.0.0.1:5050")
     app.run(host="127.0.0.1", port=5050, debug=True)

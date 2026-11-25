@@ -628,17 +628,38 @@ def update_db(mutator):
         return result
 
 
+def as_text(value) -> str:
+    """Cloudflare can hand session values back as JS strings, not Python str."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    converter = getattr(value, "to_py", None)
+    if callable(converter):
+        try:
+            value = converter()
+        except Exception:
+            value = str(value)
+    return str(value).strip()
+
+
 def get_user(db, user_id):
-    return next((user for user in db["users"] if user["id"] == user_id), None)
+    needle = as_text(user_id)
+    if not needle:
+        return None
+    return next((user for user in db["users"] if as_text(user.get("id")) == needle), None)
 
 
 def get_user_by_email(db, email):
-    needle = email.strip().lower()
-    return next((user for user in db["users"] if user["email"] == needle), None)
+    needle = as_text(email).lower()
+    if not needle:
+        return None
+    return next((user for user in db["users"] if as_text(user.get("email")).lower() == needle), None)
 
 
 def get_subscription(db, user_id):
-    matches = [sub for sub in db["subscriptions"] if sub["userId"] == user_id]
+    needle = as_text(user_id)
+    matches = [sub for sub in db["subscriptions"] if as_text(sub.get("userId")) == needle]
     return matches[-1] if matches else None
 
 
@@ -1067,7 +1088,7 @@ def present_subscription(sub):
 def account_snapshot(db, user_id):
     user = get_user(db, user_id)
     sub = present_subscription(get_subscription(db, user_id))
-    orders = [present_order(db, order) for order in db["orders"] if order["userId"] == user_id]
+    orders = [present_order(db, order) for order in db["orders"] if as_text(order.get("userId")) == as_text(user_id)]
     orders.sort(key=lambda order: order["deliveryDate"])
     upcoming = [order for order in orders if order["status"] != "dostavljeno"]
     history = [order for order in orders if order["status"] == "dostavljeno"]
