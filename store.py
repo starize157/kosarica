@@ -285,12 +285,73 @@ def short_day(value: date) -> str:
     return f"{value.day}.{value.month}."
 
 
+def _pbkdf2_python(password: bytes, salt: bytes, rounds: int) -> bytes:
+    mac = hmac.new(password, salt + b"\x00\x00\x00\x01", hashlib.sha256).digest()
+    mixed = int.from_bytes(mac, "big")
+    for _ in range(rounds - 1):
+        mac = hmac.new(password, mac, hashlib.sha256).digest()
+        mixed ^= int.from_bytes(mac, "big")
+    return mixed.to_bytes(32, "big")
+
+
+def _pbkdf2_webcrypto(password: bytes, salt: bytes, rounds: int):
+    try:
+        import js
+        from pyodide.ffi import run_sync, to_js
+    except ImportError:
+        return None
+
+    def as_bytes(data: bytes):
+        array = js.Uint8Array.new(len(data))
+        for index, value in enumerate(data):
+            array[index] = value
+        return array
+
+    def as_object(mapping):
+        return to_js(mapping, dict_converter=js.Object.fromEntries)
+
+    async def derive():
+        key = await js.crypto.subtle.importKey(
+            "raw",
+            as_bytes(password),
+            as_object({"name": "PBKDF2"}),
+            False,
+            to_js(["deriveBits"]),
+        )
+        bits = await js.crypto.subtle.deriveBits(
+            as_object(
+                {
+                    "name": "PBKDF2",
+                    "hash": "SHA-256",
+                    "salt": as_bytes(salt),
+                    "iterations": rounds,
+                }
+            ),
+            key,
+            256,
+        )
+        return bytes(js.Uint8Array.new(bits).to_py())
+
+    try:
+        return run_sync(derive())
+    except Exception:
+        return None
+
+
+def _pbkdf2_sha256(password: bytes, salt: bytes, rounds: int) -> bytes:
+    native = getattr(hashlib, "pbkdf2_hmac", None)
+    if native is not None:
+        return native("sha256", password, salt, rounds)
+    derived = _pbkdf2_webcrypto(password, salt, rounds)
+    if derived is not None:
+        return derived
+    return _pbkdf2_python(password, salt, rounds)
+
+
 def hash_password(password: str, salt: str | None = None):
     if salt is None:
         salt = os.urandom(16).hex()
-    digest = hashlib.pbkdf2_hmac(
-        "sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF_ROUNDS
-    ).hex()
+    digest = _pbkdf2_sha256(password.encode("utf-8"), bytes.fromhex(salt), PBKDF_ROUNDS).hex()
     return {"salt": salt, "hash": digest}
 
 
