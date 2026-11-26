@@ -454,13 +454,32 @@ def _on_worker() -> bool:
     return bool(has_request_context() and "workers.env" in request.environ)
 
 
+_KEY_NAMES = ("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY")
+
+
+def _env_key():
+    for name in _KEY_NAMES:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _bound_key(env):
+    for name in _KEY_NAMES:
+        value = _binding(env, name)
+        if value:
+            return value
+    return ""
+
+
 def _secret_pair():
     url = _clean_supabase_url(os.environ.get("SUPABASE_URL", ""))
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    key = _env_key()
     if not (url and key):
         for env in _worker_envs():
             url = url or _clean_supabase_url(_binding(env, "SUPABASE_URL"))
-            key = key or _binding(env, "SUPABASE_SERVICE_ROLE_KEY")
+            key = key or _bound_key(env)
     return url, key
 
 
@@ -470,7 +489,7 @@ def _credentials():
         return None
     if _jwt_role(key) in {"anon", "authenticated"}:
         raise StoreError(
-            "V Cloudflare je prilepljen anon ključ. SUPABASE_SERVICE_ROLE_KEY mora biti service_role ključ iz Supabase, Settings, API."
+            "V Cloudflare je prilepljen javni ključ. SUPABASE_SECRET_KEY mora biti skrivni ključ iz Supabase, Settings, API."
         )
     return url, key
 
@@ -483,7 +502,7 @@ def database_status() -> dict:
             return {
                 "mode": "bad-key",
                 "host": host,
-                "detail": "V Cloudflare je anon ključ. Prilepi service_role ključ v SUPABASE_SERVICE_ROLE_KEY.",
+                "detail": "V Cloudflare je javni ključ. Prilepi skrivni ključ v SUPABASE_SECRET_KEY.",
             }
         return {"mode": "supabase", "host": host, "detail": ""}
     if _on_worker():
@@ -491,7 +510,7 @@ def database_status() -> dict:
         if not url:
             missing.append("SUPABASE_URL")
         if not key:
-            missing.append("SUPABASE_SERVICE_ROLE_KEY")
+            missing.append("SUPABASE_SECRET_KEY")
         return {"mode": "missing", "host": "", "detail": " in ".join(missing)}
     return {"mode": "local", "host": "", "detail": ""}
 

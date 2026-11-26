@@ -17,7 +17,7 @@ The Worker name in the Cloudflare dashboard must be `kosarica`, the same as `nam
 3. Run `supabase/seed.sql`. This loads the sample customers and orders. Demo customer: `ana.horvat@example.com` / `kosarica`.
 4. In Cloudflare, open the `kosarica` Worker, then Settings, then Variables and Secrets. Add:
    - `SUPABASE_URL` — Project URL from Supabase, like `https://xxxx.supabase.co`
-   - `SUPABASE_SERVICE_ROLE_KEY` — service role key from Supabase Project Settings, API
+   - `SUPABASE_SECRET_KEY` — the secret key from Supabase Project Settings, API (`sb_secret_...` or the legacy service_role key). `SUPABASE_SERVICE_ROLE_KEY` is also accepted. Do not use the publishable key.
 
 Use the service role key only as a Worker secret. It can read and write every row. Do not put it in the repository or in a `NEXT_PUBLIC` variable.
 
