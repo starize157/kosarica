@@ -428,12 +428,28 @@ def guard_admin():
 def admin_counts():
     if not session.get("admin"):
         return {}
+    status = store.database_status()
+    view = {
+        "db_mode": status["mode"],
+        "db_host": status["host"],
+        "db_detail": status["detail"],
+        "data_saved": status["mode"] in {"supabase", "local"},
+        "nav_counts": {"narocila": 0, "stranke": 0, "dostave": 0},
+    }
     try:
         db = store.read_db()
-    except store.StoreError:
-        return {}
+    except store.StoreError as error:
+        view["db_mode"] = "error"
+        view["db_detail"] = str(error)
+        view["data_saved"] = False
+        return view
     stats = store.overview(db)
-    return {"nav_counts": {"narocila": len(db["orders"]), "stranke": len(db["users"]), "dostave": stats["weekBaskets"]}}
+    view["nav_counts"] = {
+        "narocila": len(db["orders"]),
+        "stranke": len(db["users"]),
+        "dostave": stats["weekBaskets"],
+    }
+    return view
 
 
 @admin.route("/prijava", methods=["GET", "POST"])
@@ -498,11 +514,16 @@ def narocila():
 
 @admin.route("/narocila/<order_id>")
 def narocilo(order_id):
+    order_id = store.as_text(order_id)
     db = store.read_db()
     order = store.get_order(db, order_id)
     if not order:
-        return render_template("404.html"), 404
-    return render_template("dashboard/narocilo.html", order=store.present_order(db, order))
+        return render_template("dashboard/narocilo.html", order=None, order_id=order_id)
+    return render_template(
+        "dashboard/narocilo.html",
+        order=store.present_order(db, order),
+        order_id=order["id"],
+    )
 
 
 @admin.post("/narocila/<order_id>/status")

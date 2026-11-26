@@ -2,5 +2,7 @@
 __pycache__/
 *.pyc
 node_modules/
+build/
+*.egg-info/
 data/*.tmp
 data/*.json.tmp

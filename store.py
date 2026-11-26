@@ -9,6 +9,7 @@ import json
 import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 from pathlib import Path
@@ -377,8 +378,9 @@ def _memory_db() -> dict:
 def _binding(env, name):
     if env is None:
         return ""
+    value = None
     try:
-        value = getattr(env, name)
+        value = getattr(env, name, None)
     except Exception:
         value = None
     if not value:
@@ -386,52 +388,148 @@ def _binding(env, name):
             value = env[name]
         except Exception:
             value = None
-    return str(value).strip() if value else ""
+    if not value:
+        getter = getattr(env, "get", None)
+        if callable(getter):
+            try:
+                value = getter(name)
+            except Exception:
+                value = None
+    if not value:
+        return ""
+    converter = getattr(value, "to_py", None)
+    if callable(converter):
+        try:
+            value = converter()
+        except Exception:
+            pass
+    return str(value).strip()
+
+
+def _clean_supabase_url(url: str) -> str:
+    url = url.strip().rstrip("/")
+    marker = "/rest/v1"
+    if marker in url:
+        url = url.split(marker, 1)[0].rstrip("/")
+    return url
+
+
+def _jwt_role(key: str) -> str:
+    parts = key.split(".")
+    if len(parts) < 2:
+        return ""
+    try:
+        import base64
+
+        padded = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded.encode("ascii")))
+    except Exception:
+        return ""
+    role = payload.get("role")
+    return str(role).strip() if role else ""
+
+
+def _worker_envs():
+    found = []
+    try:
+        from workers import env as worker_env
+    except ImportError:
+        worker_env = None
+    if worker_env is not None:
+        found.append(worker_env)
+    try:
+        from flask import has_request_context, request
+    except ImportError:
+        return found
+    if has_request_context():
+        found.append(request.environ.get("workers.env"))
+    return found
+
+
+def _on_worker() -> bool:
+    try:
+        from flask import has_request_context, request
+    except ImportError:
+        return False
+    return bool(has_request_context() and "workers.env" in request.environ)
+
+
+def _secret_pair():
+    url = _clean_supabase_url(os.environ.get("SUPABASE_URL", ""))
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    if not (url and key):
+        for env in _worker_envs():
+            url = url or _clean_supabase_url(_binding(env, "SUPABASE_URL"))
+            key = key or _binding(env, "SUPABASE_SERVICE_ROLE_KEY")
+    return url, key
 
 
 def _credentials():
-    url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    url, key = _secret_pair()
     if not (url and key):
-        try:
-            from flask import has_request_context, request
-        except ImportError:
-            return None
-        if not has_request_context():
-            return None
-        env = request.environ.get("workers.env")
-        url = _binding(env, "SUPABASE_URL").rstrip("/")
-        key = _binding(env, "SUPABASE_SERVICE_ROLE_KEY")
+        return None
+    if _jwt_role(key) in {"anon", "authenticated"}:
+        raise StoreError(
+            "V Cloudflare je prilepljen anon ključ. SUPABASE_SERVICE_ROLE_KEY mora biti service_role ključ iz Supabase, Settings, API."
+        )
+    return url, key
+
+
+def database_status() -> dict:
+    url, key = _secret_pair()
+    host = urllib.parse.urlparse(url).netloc if url else ""
     if url and key:
-        return url, key
-    return None
+        if _jwt_role(key) in {"anon", "authenticated"}:
+            return {
+                "mode": "bad-key",
+                "host": host,
+                "detail": "V Cloudflare je anon ključ. Prilepi service_role ključ v SUPABASE_SERVICE_ROLE_KEY.",
+            }
+        return {"mode": "supabase", "host": host, "detail": ""}
+    if _on_worker():
+        missing = []
+        if not url:
+            missing.append("SUPABASE_URL")
+        if not key:
+            missing.append("SUPABASE_SERVICE_ROLE_KEY")
+        return {"mode": "missing", "host": "", "detail": " in ".join(missing)}
+    return {"mode": "local", "host": "", "detail": ""}
 
 
-def _supabase_request(creds, method, path, body=None):
+def _supabase_request(creds, method, path, body=None, prefer=None, range_header=None):
     url, key = creds
     data = None if body is None else json.dumps(body).encode("utf-8")
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if prefer:
+        headers["Prefer"] = prefer
+    if range_header:
+        headers["Range"] = range_header
     request = urllib.request.Request(
         f"{url}/rest/v1/{path}",
         data=data,
         method=method,
-        headers={
-            "apikey": key,
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates,return=minimal",
-            "Range": "0-1999",
-        },
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             raw = response.read()
     except urllib.error.HTTPError as error:
+        if error.code == 416 and method == "GET":
+            return []
         detail = error.read().decode("utf-8", "replace")[:240]
         raise StoreError(f"Supabase ni sprejel podatkov ({error.code}). {detail}") from error
     except OSError as error:
         raise StoreError("Povezava s Supabase ni uspela.") from error
     if not raw:
         return []
+    if not isinstance(raw, (bytes, str)):
+        raw = bytes(raw)
     return json.loads(raw)
 
 
@@ -550,21 +648,47 @@ def _order_row(order):
 def _upsert(creds, table, rows):
     for start in range(0, len(rows), 40):
         chunk = rows[start : start + 40]
-        _supabase_request(creds, "POST", f"{table}?on_conflict=id", chunk)
+        _supabase_request(
+            creds,
+            "POST",
+            f"{table}?on_conflict=id",
+            chunk,
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
 
 
 def _delete_missing(creds, table, ids):
     if not ids:
-        _supabase_request(creds, "DELETE", f"{table}?id=not.is.null")
+        _supabase_request(creds, "DELETE", f"{table}?id=not.is.null", prefer="return=minimal")
         return
     listed = ",".join(f'"{item}"' for item in ids)
-    _supabase_request(creds, "DELETE", f"{table}?id=not.in.({listed})")
+    _supabase_request(creds, "DELETE", f"{table}?id=not.in.({listed})", prefer="return=minimal")
+
+
+def _supabase_get_all(creds, table):
+    rows = []
+    start = 0
+    page = 1000
+    while start < 20000:
+        chunk = _supabase_request(
+            creds,
+            "GET",
+            f"{table}?select=*",
+            range_header=f"{start}-{start + page - 1}",
+        )
+        if not isinstance(chunk, list):
+            raise StoreError("Supabase je vrnil nepričakovan odgovor.")
+        rows.extend(chunk)
+        if len(chunk) < page:
+            return rows
+        start += page
+    return rows
 
 
 def _load_supabase(creds) -> dict:
-    customers = _supabase_request(creds, "GET", "customers?select=*")
-    subscriptions = _supabase_request(creds, "GET", "subscriptions?select=*")
-    orders = _supabase_request(creds, "GET", "orders?select=*")
+    customers = _supabase_get_all(creds, "customers")
+    subscriptions = _supabase_get_all(creds, "subscriptions")
+    orders = _supabase_get_all(creds, "orders")
     return _rows_to_db(customers, subscriptions, orders)
 
 
@@ -615,9 +739,29 @@ def _save_unlocked(db: dict) -> None:
     _write_unlocked(db)
 
 
+def _remember(db):
+    try:
+        from flask import g, has_request_context
+    except ImportError:
+        return
+    if has_request_context():
+        g.kosarica_db = db
+
+
 def read_db() -> dict:
+    try:
+        from flask import g, has_request_context
+    except ImportError:
+        has_request_context = lambda: False
+        g = None
+    if has_request_context():
+        cached = getattr(g, "kosarica_db", None)
+        if cached is not None:
+            return cached
     with _lock:
-        return _load_unlocked()
+        db = _load_unlocked()
+    _remember(db)
+    return db
 
 
 def update_db(mutator):
@@ -625,7 +769,8 @@ def update_db(mutator):
         db = _load_unlocked()
         result = mutator(db)
         _save_unlocked(db)
-        return result
+    _remember(db)
+    return result
 
 
 def as_text(value) -> str:
@@ -664,7 +809,14 @@ def get_subscription(db, user_id):
 
 
 def get_order(db, order_id):
-    return next((order for order in db["orders"] if order["id"] == order_id), None)
+    needle = as_text(order_id)
+    if not needle:
+        return None
+    return next((order for order in db["orders"] if as_text(order.get("id")) == needle), None)
+
+
+def persists() -> bool:
+    return database_status()["mode"] in {"supabase", "local"}
 
 
 def require_subscription(db, user_id):
